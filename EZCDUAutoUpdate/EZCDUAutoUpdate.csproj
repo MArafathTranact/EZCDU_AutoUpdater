@@ -31,17 +31,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="AutoUpdateNLog.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="Resources\icons8-update-50.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageReference Include="NLog" Version="6.0.4" />
-    <PackageReference Include="NLog.Schema" Version="6.0.4" />
-    <PackageReference Include="NLog.Targets.Loki" Version="2.2.0" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="System.Reactive" Version="6.0.2" />
     <PackageReference Include="System.Security.AccessControl" Version="6.0.1" />
     <PackageReference Include="System.Security.Principal" Version="4.3.0" />

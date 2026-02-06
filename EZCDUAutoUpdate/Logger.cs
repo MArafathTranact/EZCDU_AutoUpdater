@@ -1,4 +1,4 @@
-﻿using NLog;
+﻿using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,157 +9,43 @@ namespace EZCDUAutoUpdate
 {
     public static class Logger
     {
-        public static object _locked = new object();
-        //private static string folder = ServiceConfiguration.GetFileLocation("Trace");
-        //private static int logsize = int.Parse(ServiceConfiguration.GetFileLocation("LogSize"));
-        //private static string ExceptionLog = ServiceConfiguration.GetFileLocation("ExceptionLog");
-        public static Queue<string> logmessages = new Queue<string>();
-        //private static bool IsloggingStopped = false;
-        private static ILogger logger { get; set; }
+        // Serilog handles thread-safety internally, so we don't need manual locking objects or queues.
         static Logger()
         {
-            logger = LogManager.GetCurrentClassLogger();
 
-            //Task.Factory.StartNew(() =>
-            //{
-            //    LogEnqueuedMessage();
-            //});
-        }
+            string serviceFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "EZCDUAutoUpdater");
 
-        private static void LogEnqueuedMessage()
-        {
+            string archiveFolder = Path.Combine(serviceFolder, "Archievedlogs");
 
-            //while (true)
-            //{
-            //    try
-            //    {
-            //        if (logmessages.Count > 0)
-            //            LogMessages(logmessages.Dequeue());
-            //        else
-            //        {
-            //            Thread.Sleep(1000);
-            //        }
+            string outputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
 
-
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        IsloggingStopped = true;
-            //        LogMessages($"Dequeue Error : {ex.Message}");
-            //    }
-
-            //}
-
-        }
-
-        private static void LogInfo(string information)
-        {
-            try
-            {
-                logger.Info(information);
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        private static void LogError(string message, Exception exception)
-        {
-            try
-            {
-                logger.Error(exception, message);
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        private static void LogWarning(string message)
-        {
-            try
-            {
-                logger.Warn(message);
-            }
-            catch (Exception)
-            {
-            }
+            Log.Logger = new LoggerConfiguration()
+                            .WriteTo.File(
+                               path: Path.Combine(serviceFolder, "AutoUpdateLog.txt"),
+                               outputTemplate: outputTemplate, // Apply the custom format here
+                               rollingInterval: RollingInterval.Infinite,
+                               rollOnFileSizeLimit: true, // MUST be true to trigger the hook
+                               fileSizeLimitBytes: 100 * 1024 * 1024, // 1MB
+                               hooks: new ArchiveFileHook(archiveFolder, 100),
+                               retainedFileCountLimit: null
+                            )
+                            .CreateLogger();
         }
 
         public static void LogWithNoLock(string message)
         {
-            LogInfo(message);
+            Log.Information(message);
         }
 
         public static void LogExceptionWithNoLock(string message, Exception exception)
         {
-            LogError(message, exception);
+            // Serilog automatically formats the message and the StackTrace
+            Log.Error(exception, message);
         }
 
         public static void LogWarningWithNoLock(string message)
         {
-            LogWarning(message);
+            Log.Warning(message);
         }
-
-
-
-        public static void LogMessages(string message)
-        {
-            //try
-            //{
-            //    if (!string.IsNullOrEmpty(message))
-            //    {
-            //        CreateLogFile(folder);
-
-            //        FileInfo fi = new FileInfo(folder);
-            //        var size = fi.Length >> 20;
-            //        var fileMode = size >= logsize ? FileMode.Truncate : FileMode.Append;
-
-            //        using (var fs = new FileStream(folder, fileMode, FileAccess.Write, FileShare.Write))
-            //        using (var sw = new StreamWriter(fs))
-            //        {
-            //            sw.WriteLine(message);
-            //        }
-            //    }
-
-            //}
-            //catch (Exception ex)
-            //{
-            //    LogExceptionMessages($"Message : {message} ; Exception : {ex.Message}");
-            //}
-
-        }
-
-        public static void LogExceptionMessages(string message)
-        {
-            //try
-            //{
-            //    CreateLogFile(ExceptionLog);
-
-            //    FileInfo fi = new FileInfo(ExceptionLog);
-            //    var size = fi.Length >> 20;
-            //    var fileMode = size >= logsize ? FileMode.Truncate : FileMode.Append;
-
-            //    using (var fs = new FileStream(ExceptionLog, fileMode, FileAccess.Write, FileShare.Write))
-            //    using (var sw = new StreamWriter(fs))
-            //    {
-            //        sw.WriteLine(message);
-            //    }
-
-            //}
-            //catch (Exception ex)
-            //{
-            //    //LogWithNoLock($"{message}");
-            //}
-
-        }
-
-        private static void CreateLogFile(string folder)
-        {
-            if (!File.Exists(folder))
-            {
-                using (File.Create(folder)) { }
-            }
-        }
-
     }
 }

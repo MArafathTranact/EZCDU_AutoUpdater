@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using IWshRuntimeLibrary; // Add reference to Windows Script Host Object Model
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -6,15 +7,17 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.IO;
 using System.Reactive.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq;
 using System.Xml.Serialization;
-using System.Runtime.InteropServices;
-using IWshRuntimeLibrary; // Add reference to Windows Script Host Object Model
+using File = System.IO.File;
 
 namespace EZCDUAutoUpdate
 {
@@ -648,14 +651,30 @@ namespace EZCDUAutoUpdate
                 if (Directory.Exists(TempPath))
                 {
                     string sourceFilePath = Path.Combine(TempPath, "FujitsuCDU.exe.config");
-
-                    if (System.IO.File.Exists(sourceFilePath))
+                    if (File.Exists(sourceFilePath))
                     {
-                        string destinationFilePath = Path.Combine(configuration.ServiceInstallPath, Path.GetFileName(sourceFilePath));
-                        System.IO.File.Copy(sourceFilePath, destinationFilePath, true);
-                        LogEvents($"Original EZCDU config file copied to '{destinationFilePath}' for service startup.");
+                        var existingConfigValue = ReadLocalConfigValue(sourceFilePath);
+
+                        string serviceFolder = AppDomain.CurrentDomain.BaseDirectory;
+
+                        var copyResult = MoveExistingConfigValue(existingConfigValue, Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FujitsuCDU.exe.config"));
+
+                        //string destinationFilePath = Path.Combine(configuration.ServiceInstallPath, Path.GetFileName(sourceFilePath));
+
+                        if (copyResult)
+                        {
+                            //File.Copy(sourceFilePath, destinationFilePath, true);
+                            LogEvents($"FujitsuCDU config file copied for service startup.");
+                            return true;
+                        }
+                        else
+                        {
+                            LogEvents($"FujitsuCDU config file copy failed for service startup.");
+                            return true;
+                        }
                     }
-                    return true;
+                    else
+                        return false;
                 }
                 else
                     return false;
@@ -667,6 +686,184 @@ namespace EZCDUAutoUpdate
             }
         }
 
+        private Dictionary<string, string> ReadLocalConfigValue(string configFilePath)
+        {
+            Dictionary<string, string> configValue = [];
+
+            try
+            {
+                XDocument doc = XDocument.Load(configFilePath);
+                XElement appSettings = doc.Root.Element("appSettings");
+                if (appSettings == null)
+                {
+                    appSettings = new XElement("appSettings");
+                    doc.Root.Add(appSettings);
+                }
+
+                XElement Portsetting = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "Port");
+                if (Portsetting != null)
+                    configValue.Add("Port", Portsetting.Attribute("value")?.Value);
+
+                XElement Ipsetting = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "Ip");
+                if (Ipsetting != null)
+                    configValue.Add("Ip", Portsetting.Attribute("value")?.Value);
+
+                XElement ComPort = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "ComPort");
+                if (ComPort != null)
+                    configValue.Add("ComPort", Portsetting.Attribute("value")?.Value);
+
+                XElement BaudRate = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "BaudRate");
+                if (BaudRate != null)
+                    configValue.Add("BaudRate", Portsetting.Attribute("value")?.Value);
+
+                XElement DataBit = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DataBit");
+                if (DataBit != null)
+                    configValue.Add("DataBit", Portsetting.Attribute("value")?.Value);
+
+                XElement Parity = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "Parity");
+                if (Parity != null)
+                    configValue.Add("Parity", Portsetting.Attribute("value")?.Value);
+
+                XElement StopBits = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "StopBits");
+                if (StopBits != null)
+                    configValue.Add("StopBits", Portsetting.Attribute("value")?.Value);
+
+                XElement EZcashIP = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "EZcashIP");
+                if (EZcashIP != null)
+                    configValue.Add("EZcashIP", Portsetting.Attribute("value")?.Value);
+
+                XElement EZcashPort = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "EZcashPort");
+                if (EZcashPort != null)
+                    configValue.Add("EZcashPort", Portsetting.Attribute("value")?.Value);
+
+                XElement DescriptionLoad = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DescriptionLoad");
+                if (DescriptionLoad != null)
+                    configValue.Add("DescriptionLoad", Portsetting.Attribute("value")?.Value);
+
+                XElement DescriptionDirectPayLoad = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DescriptionDirectPayLoad");
+                if (DescriptionDirectPayLoad != null)
+                    configValue.Add("DescriptionDirectPayLoad", Portsetting.Attribute("value")?.Value);
+
+                XElement DispensingCashMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DispensingCashMessage");
+                if (DispensingCashMessage != null)
+                    configValue.Add("DispensingCashMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement DispensingMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DispensingMessage");
+                if (DispensingMessage != null)
+                    configValue.Add("DispensingMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement DispensedMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DispensedMessage");
+                if (DispensedMessage != null)
+                    configValue.Add("DispensedMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement PleaseWaitMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "PleaseWaitMessage");
+                if (PleaseWaitMessage != null)
+                    configValue.Add("PleaseWaitMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement DifferentCombinationMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DifferentCombinationMessage");
+                if (DifferentCombinationMessage != null)
+                    configValue.Add("DifferentCombinationMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement TransactionCompleteMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "TransactionCompleteMessage");
+                if (TransactionCompleteMessage != null)
+                    configValue.Add("TransactionCompleteMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement ThankYouMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "ThankYouMessage");
+                if (ThankYouMessage != null)
+                    configValue.Add("ThankYouMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement PleaseTakeYourCashMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "PleaseTakeYourCashMessage");
+                if (PleaseTakeYourCashMessage != null)
+                    configValue.Add("PleaseTakeYourCashMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement InvalidCardMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "InvalidCardMessage");
+                if (InvalidCardMessage != null)
+                    configValue.Add("InvalidCardMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement TransactionCancelledMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "TransactionCancelledMessage");
+                if (TransactionCancelledMessage != null)
+                    configValue.Add("TransactionCancelledMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement TransactionTimedOutMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "TransactionTimedOutMessage");
+                if (TransactionTimedOutMessage != null)
+                    configValue.Add("TransactionTimedOutMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement DispenserOutOfServiceMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DispenserOutOfServiceMessage");
+                if (DispenserOutOfServiceMessage != null)
+                    configValue.Add("DispenserOutOfServiceMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement InitializingDispenserMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "InitializingDispenserMessage");
+                if (InitializingDispenserMessage != null)
+                    configValue.Add("InitializingDispenserMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement InitiateCDUTimeoutErrorMessage = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "InitiateCDUTimeoutErrorMessage");
+                if (InitiateCDUTimeoutErrorMessage != null)
+                    configValue.Add("InitiateCDUTimeoutErrorMessage", Portsetting.Attribute("value")?.Value);
+
+                XElement TraceFileSize = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "TraceFileSize");
+                if (TraceFileSize != null)
+                    configValue.Add("TraceFileSize", Portsetting.Attribute("value")?.Value);
+
+                XElement DeleteArchieved = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == "DeleteArchieved");
+                if (DeleteArchieved != null)
+                    configValue.Add("DeleteArchieved", Portsetting.Attribute("value")?.Value);
+            }
+            catch (Exception ex)
+            {
+                LogExceptions(" ReadLocalConfigValue() ", ex);
+                return default;
+            }
+
+            return configValue;
+        }
+
+        private bool MoveExistingConfigValue(Dictionary<string, string> existingConfig, string currentConfigFilePath)
+        {
+
+            try
+            {
+                if (!string.IsNullOrEmpty(currentConfigFilePath) && File.Exists(currentConfigFilePath))
+                {
+                    // Work in memory
+                    XDocument doc = XDocument.Load(currentConfigFilePath);
+                    XElement appSettings = doc.Root.Element("appSettings");
+                    if (appSettings == null)
+                    {
+                        appSettings = new XElement("appSettings");
+                        doc.Root.Add(appSettings);
+                    }
+
+                    if (existingConfig != null)
+                    {
+                        foreach (var item in existingConfig)
+                        {
+                            XElement setting = appSettings.Elements("add").FirstOrDefault(e => e.Attribute("key")?.Value == item.Key);
+
+                            if (setting != null)
+                            {
+                                setting.SetAttributeValue("value", item.Value);
+                            }
+
+                        }
+                        doc.Save(currentConfigFilePath);
+
+                    }
+                    return true;
+                }
+                else
+                {
+                    LogEvents($"EZCash config file not found in {currentConfigFilePath}.");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogExceptions(" MoveExistingConfigValue() ", ex);
+                return false;
+            }
+
+
+        }
         private void CopyAutoUpdateConfigFile()
         {
             try
@@ -996,7 +1193,7 @@ namespace EZCDUAutoUpdate
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
-            LogEvents("Clsoing Auto Update application.");
+            LogEvents("Closing Auto Update application.");
             Application.Exit();
         }
 
