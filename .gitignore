@@ -20,3 +20,14 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+# Exclude build output folders
+[Bb]in/
+[Oo]bj/
+
+# Exclude Visual Studio hidden folders
+.vs/
+# Exclude installers and release artifacts
+*.msi
+*.exe
+[Rr]elease/
+[Dd]ebug/
